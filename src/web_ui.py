@@ -317,53 +317,63 @@ async def generate_graph(username: str = Depends(verify_credentials)):
         entities = session.query(Entity).all()
         dates = session.query(Date).all()
         
-        # Add ibit nodes
+        # Calculate node sizes based on number of connections
+        def calculate_size(base_size, connection_count):
+            # Scale size based on connections: base_size + (connections * 3)
+            return base_size + (connection_count * 3)
+        
+        # Add ibit nodes with dynamic sizing
         for ibit in ibits:
             label = ibit.text[:50] + "..." if len(ibit.text) > 50 else ibit.text
-            # Wrap text for tooltip to prevent overflow - use newline character
             wrapped_text = "\n".join([ibit.text[i:i+60] for i in range(0, len(ibit.text), 60)])
+            # Count connections: categories + entities + dates + source (if exists)
+            connection_count = len(ibit.categories) + len(ibit.entities) + len(ibit.dates) + (1 if ibit.source else 0)
             net.add_node(f"I{ibit.id}", 
                         label=f"Ibit {ibit.id}",
                         title=wrapped_text,
                         color="#87CEEB",
-                        size=25,
+                        size=calculate_size(15, connection_count),
                         shape="dot")
         
-        # Add category nodes
+        # Add category nodes with dynamic sizing
         for category in categories:
+            connection_count = len(category.ibits)
             net.add_node(f"C_{category.name}",
                         label=f"#{category.name}",
-                        title=f"Category: {category.name}",
+                        title=f"Category: {category.name} ({connection_count} ibits)",
                         color="#90EE90",
-                        size=20,
+                        size=calculate_size(15, connection_count),
                         shape="box")
         
-        # Add entity nodes
+        # Add entity nodes with dynamic sizing
         for entity in entities:
+            connection_count = len(entity.ibits)
             net.add_node(f"E_{entity.name}",
                         label=f"@{entity.name}",
-                        title=f"Entity: {entity.name}",
+                        title=f"Entity: {entity.name} ({connection_count} ibits)",
                         color="#FFB6C1",
-                        size=20,
+                        size=calculate_size(15, connection_count),
                         shape="diamond")
         
-        # Add source nodes
+        # Add source nodes with dynamic sizing
         sources = set(ibit.source for ibit in ibits if ibit.source)
         for source in sources:
+            connection_count = sum(1 for ibit in ibits if ibit.source == source)
             net.add_node(f"S_{source}",
                         label=f"&{source[:30]}..." if len(source) > 30 else f"&{source}",
-                        title=f"Source: {source}",
+                        title=f"Source: {source} ({connection_count} ibits)",
                         color="#FFD700",
-                        size=20,
+                        size=calculate_size(15, connection_count),
                         shape="triangle")
         
-        # Add date nodes
+        # Add date nodes with dynamic sizing
         for date in dates:
+            connection_count = len(date.ibits)
             net.add_node(f"D_{date.date}",
                         label=f"^{date.date}",
-                        title=f"Date: {date.date}",
+                        title=f"Date: {date.date} ({connection_count} ibits)",
                         color="#FF8C00",
-                        size=20,
+                        size=calculate_size(15, connection_count),
                         shape="star")
         
         # Add edges

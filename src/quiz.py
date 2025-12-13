@@ -56,12 +56,22 @@ The correct_index should be 0, 1, 2, or 3 indicating which option is correct."""
         
         quiz_data = json.loads(content)
         
+        # Shuffle the answer options to avoid patterns
+        options = quiz_data['options']
+        correct_answer = options[quiz_data['correct_index']]
+        
+        # Shuffle options
+        random.shuffle(options)
+        
+        # Find new index of correct answer
+        new_correct_index = options.index(correct_answer)
+        
         return {
             'ibit_id': selected_ibit.id,
             'ibit_text': selected_ibit.text,
             'question_text': quiz_data['question'],
-            'choices': quiz_data['options'],
-            'correct_index': quiz_data['correct_index']
+            'choices': options,
+            'correct_index': new_correct_index
         }
     except Exception as e:
         print(f"Error generating AI quiz: {e}")
