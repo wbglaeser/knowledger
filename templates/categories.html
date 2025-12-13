@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - Knowledger{% endblock %}
+
+{% block content %}
+<h2>All Categories ({{ categories|length }})</h2>
+
+{% if categories %}
+<div class="card">
+    <ul class="ibit-list">
+        {% for category in categories %}
+        <li class="ibit-item">
+            <a href="/categories/{{ category.name }}" class="link">
+                <strong>#{{ category.name }}</strong>
+            </a>
+            <span style="color: #999; margin-left: 1rem;">{{ category.ibits|length }} ibit(s)</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty">No categories stored yet.</div>
+</div>
+{% endif %}
+{% endblock %}

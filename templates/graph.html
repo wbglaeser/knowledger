@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Graph - Knowledger{% endblock %}
+
+{% block content %}
+<h2>Knowledge Graph Visualization</h2>
+
+<div class="card">
+    <p style="margin-bottom: 1rem;">Interactive visualization of your knowledge base. Click and drag nodes to explore relationships.</p>
+    <button id="generateBtn" style="padding: 0.75rem 1.5rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-bottom: 1rem;">
+        Generate Graph
+    </button>
+    <div id="loading" style="display: none; text-align: center; padding: 2rem; color: #999;">
+        Generating graph...
+    </div>
+</div>
+
+<div id="graphContainer" style="display: none;">
+    <div class="card" style="padding: 16px; overflow: hidden;">
+        <iframe id="graphFrame" style="width: 100%; height: 832px; border: none; display: block; margin: 0;"></iframe>
+    </div>
+    <div class="card">
+        <h3>Legend</h3>
+        <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 20px; height: 20px; background: #87CEEB; border-radius: 50%;"></div>
+                <span>Ibits</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 20px; height: 20px; background: #90EE90;"></div>
+                <span>Categories</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 20px; height: 20px; background: #FFB6C1; transform: rotate(45deg);"></div>
+                <span>Entities</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #FFD700;"></div>
+                <span>Sources</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('generateBtn').addEventListener('click', async function() {
+        const btn = this;
+        const loading = document.getElementById('loading');
+        const container = document.getElementById('graphContainer');
+        
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+        loading.style.display = 'block';
+        
+        try {
+            const response = await fetch('/generate-graph');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                document.getElementById('graphFrame').src = data.graph_url;
+                container.style.display = 'block';
+                btn.textContent = 'Regenerate Graph';
+            }
+        } catch (error) {
+            alert('Error generating graph: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            loading.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

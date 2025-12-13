@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Entity: {{ entity.name }} - Knowledger{% endblock %}
+
+{% block content %}
+<h2>Entity: @{{ entity.name }}</h2>
+
+<div class="card">
+    <p style="margin-bottom: 1.5rem;"><strong>{{ entity.ibits|length }}</strong> ibit(s) associated with this entity</p>
+    
+    {% if entity.ibits %}
+    <ul class="ibit-list">
+        {% for ibit in entity.ibits %}
+        <li class="ibit-item">
+            <div class="ibit-id">ID: {{ ibit.id }}{% if ibit.source %} • Source: {{ ibit.source }}{% endif %}</div>
+            <div class="ibit-text"><a href="/ibits/{{ ibit.id }}" class="link">{{ ibit.text }}</a></div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+<a href="/entities" class="link">← Back to all entities</a>
+{% endblock %}

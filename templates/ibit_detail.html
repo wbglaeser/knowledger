@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Ibit #{{ ibit.id }} - Knowledger{% endblock %}
+
+{% block content %}
+<h2>Ibit #{{ ibit.id }}</h2>
+
+<div class="card">
+    <p style="margin-bottom: 1rem;"><strong>Added:</strong> {{ ibit.date_added.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+    {% if ibit.source %}
+    <p style="margin-bottom: 1rem;"><strong>Source:</strong> {{ ibit.source }}</p>
+    {% endif %}
+    
+    <h3 style="margin-bottom: 0.5rem;">Text</h3>
+    <p style="margin-bottom: 1.5rem;">{{ ibit.text }}</p>
+    
+    {% if ibit.categories %}
+    <h3 style="margin-bottom: 0.5rem;">Categories</h3>
+    <div class="tags" style="margin-bottom: 1.5rem;">
+        {% for category in ibit.categories %}
+        <a href="/categories/{{ category.name }}" class="tag">#{{ category.name }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if ibit.entities %}
+    <h3 style="margin-bottom: 0.5rem;">Entities</h3>
+    <div class="tags" style="margin-bottom: 1.5rem;">
+        {% for entity in ibit.entities %}
+        <a href="/entities/{{ entity.name }}" class="tag entity">@{{ entity.name }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if ibit.dates %}
+    <h3 style="margin-bottom: 0.5rem;">Dates</h3>
+    <div class="tags">
+        {% for date in ibit.dates %}
+        <a href="/dates/{{ date.date }}" class="tag date">^{{ date.date }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card edit-form">
+    <h3 style="margin-bottom: 1rem;">Edit Ibit</h3>
+    <form method="POST" action="/ibits/{{ ibit.id }}/edit">
+        <div class="form-group">
+            <label for="text">Text:</label>
+            <textarea id="text" name="text" required>{{ ibit.text }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="source">Source (without &):</label>
+            <input type="text" id="source" name="source" value="{{ ibit.source or '' }}" placeholder="e.g., wikipedia, bbc.com">
+        </div>
+        <div class="form-group">
+            <label for="categories">Categories (comma-separated, without #):</label>
+            <input type="text" id="categories" name="categories" value="{% for cat in ibit.categories %}{{ cat.name }}{% if not loop.last %}, {% endif %}{% endfor %}" placeholder="e.g., history, politics, science">
+        </div>
+        <div class="form-group">
+            <label for="entities">Entities (comma-separated, without @):</label>
+            <input type="text" id="entities" name="entities" value="{% for ent in ibit.entities %}{{ ent.name }}{% if not loop.last %}, {% endif %}{% endfor %}" placeholder="e.g., Einstein, Germany, NASA">
+        </div>
+        <div class="form-group">
+            <label for="dates">Dates (comma-separated, format: YYYY-MM-DD, without ^):</label>
+            <input type="text" id="dates" name="dates" value="{% for date in ibit.dates %}{{ date.date }}{% if not loop.last %}, {% endif %}{% endfor %}" placeholder="e.g., 1969-07-20, 1989-11-09">
+        </div>
+        <button type="submit" class="btn">Save Changes</button>
+        <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Cancel</button>
+    </form>
+</div>
+
+<a href="/ibits" class="link">← Back to all ibits</a>
+{% endblock %}

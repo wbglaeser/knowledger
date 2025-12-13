@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz - Knowledger{% endblock %}
+
+{% block content %}
+<h2>Knowledge Quiz</h2>
+
+<div id="quiz-container" class="card">
+    <div id="loading" style="text-align: center; padding: 2rem;">
+        <p>Loading question...</p>
+    </div>
+    
+    <div id="quiz-content" style="display: none;">
+        <div id="ibit-context" style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem; font-size: 0.9rem; color: #666;">
+            <strong>Context:</strong> <span id="ibit-text"></span>
+        </div>
+        
+        <h3 id="question" style="margin-bottom: 1.5rem; color: #2c3e50;"></h3>
+        
+        <div id="choices" style="display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Choices will be inserted here -->
+        </div>
+        
+        <div id="result" style="margin-top: 1.5rem; padding: 1rem; border-radius: 4px; display: none;">
+            <!-- Result will be shown here -->
+        </div>
+        
+        <button id="next-question" class="btn" style="margin-top: 1.5rem; display: none;">Next Question</button>
+    </div>
+</div>
+
+<style>
+    .choice-btn {
+        padding: 1rem;
+        background: white;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.3s;
+        font-size: 1rem;
+    }
+    .choice-btn:hover {
+        border-color: #3498db;
+        background: #f8f9fa;
+    }
+    .choice-btn.correct {
+        border-color: #27ae60;
+        background: #d4edda;
+    }
+    .choice-btn.incorrect {
+        border-color: #e74c3c;
+        background: #f8d7da;
+    }
+    .choice-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    #result.correct {
+        background: #d4edda;
+        border: 2px solid #27ae60;
+        color: #155724;
+    }
+    #result.incorrect {
+        background: #f8d7da;
+        border: 2px solid #e74c3c;
+        color: #721c24;
+    }
+</style>
+
+<script>
+let currentQuiz = null;
+
+async function loadQuiz() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('quiz-content').style.display = 'none';
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('next-question').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/quiz');
+        if (!response.ok) throw new Error('Failed to load quiz');
+        
+        currentQuiz = await response.json();
+        displayQuiz();
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<p style="color: red;">Error loading quiz. Please try again.</p>';
+    }
+}
+
+function displayQuiz() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('quiz-content').style.display = 'block';
+    
+    // Hide context initially
+    document.getElementById('ibit-context').style.display = 'none';
+    
+    document.getElementById('ibit-text').textContent = currentQuiz.ibit_text;
+    document.getElementById('question').textContent = currentQuiz.question_text;
+    
+    const choicesContainer = document.getElementById('choices');
+    choicesContainer.innerHTML = '';
+    
+    const labels = ['A', 'B', 'C', 'D'];
+    currentQuiz.choices.forEach((choice, index) => {
+        const button = document.createElement('button');
+        button.className = 'choice-btn';
+        button.innerHTML = `<strong>${labels[index]}.</strong> ${choice}`;
+        button.onclick = () => checkAnswer(index);
+        choicesContainer.appendChild(button);
+    });
+}
+
+async function checkAnswer(selectedIndex) {
+    // Disable all buttons
+    const buttons = document.querySelectorAll('.choice-btn');
+    buttons.forEach(btn => btn.disabled = true);
+    
+    // Highlight correct and incorrect answers
+    buttons[currentQuiz.correct_index].classList.add('correct');
+    if (selectedIndex !== currentQuiz.correct_index) {
+        buttons[selectedIndex].classList.add('incorrect');
+    }
+    
+    // Show context after answer is given
+    document.getElementById('ibit-context').style.display = 'block';
+    
+    // Show result
+    const resultDiv = document.getElementById('result');
+    resultDiv.style.display = 'block';
+    
+    if (selectedIndex === currentQuiz.correct_index) {
+        resultDiv.className = 'correct';
+        resultDiv.textContent = '✅ Correct! Well done!';
+    } else {
+        resultDiv.className = 'incorrect';
+        resultDiv.textContent = `❌ Incorrect. The correct answer was option ${String.fromCharCode(65 + currentQuiz.correct_index)}.`;
+    }
+    
+    // Show next question button
+    document.getElementById('next-question').style.display = 'block';
+}
+
+document.getElementById('next-question').onclick = loadQuiz;
+
+// Load initial quiz
+loadQuiz();
+</script>
+{% endblock %}

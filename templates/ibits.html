@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Ibits - Knowledger{% endblock %}
+
+{% block content %}
+<h2>All Ibits ({{ ibits|length }})</h2>
+
+{% if ibits %}
+<div class="card">
+    <ul class="ibit-list">
+        {% for ibit in ibits %}
+        <li class="ibit-item">
+            <div class="ibit-id">ID: {{ ibit.id }} • Added: {{ ibit.date_added.strftime('%Y-%m-%d %H:%M') }}{% if ibit.source %} • Source: {{ ibit.source }}{% endif %}</div>
+            <div class="ibit-text"><a href="/ibits/{{ ibit.id }}" class="link">{{ ibit.text }}</a></div>
+            <div class="tags">
+                {% for category in ibit.categories %}
+                <span class="tag">#{{ category.name }}</span>
+                {% endfor %}
+                {% for entity in ibit.entities %}
+                <span class="tag entity">@{{ entity.name }}</span>
+                {% endfor %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty">No ibits stored yet.</div>
+</div>
+{% endif %}
+{% endblock %}

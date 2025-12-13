@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Dates - Knowledger{% endblock %}
+
+{% block content %}
+<h2>Dates</h2>
+{% if dates %}
+<div class="card">
+    <ul class="ibit-list">
+        {% for date in dates %}
+        <li class="ibit-item">
+            <a href="/dates/{{ date.date }}" class="link">
+                <strong>^{{ date.date }}</strong>
+            </a>
+            <span style="color: #999; margin-left: 1rem;">{{ date.ibits|length }} ibit(s)</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty">No dates stored yet.</div>
+</div>
+{% endif %}
+{% endblock %}

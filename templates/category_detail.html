@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Category: {{ category.name }} - Knowledger{% endblock %}
+
+{% block content %}
+<h2>Category: #{{ category.name }}</h2>
+
+<div class="card">
+    <p style="margin-bottom: 1.5rem;"><strong>{{ category.ibits|length }}</strong> ibit(s) in this category</p>
+    
+    {% if category.ibits %}
+    <ul class="ibit-list">
+        {% for ibit in category.ibits %}
+        <li class="ibit-item">
+            <div class="ibit-id">ID: {{ ibit.id }}{% if ibit.source %} • Source: {{ ibit.source }}{% endif %}</div>
+            <div class="ibit-text"><a href="/ibits/{{ ibit.id }}" class="link">{{ ibit.text }}</a></div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+<a href="/categories" class="link">← Back to all categories</a>
+{% endblock %}

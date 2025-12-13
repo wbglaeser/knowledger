@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Entities - Knowledger{% endblock %}
+
+{% block content %}
+<h2>All Entities ({{ entities|length }})</h2>
+
+{% if entities %}
+<div class="card">
+    <ul class="ibit-list">
+        {% for entity in entities %}
+        <li class="ibit-item">
+            <a href="/entities/{{ entity.name }}" class="link">
+                <strong>@{{ entity.name }}</strong>
+            </a>
+            <span style="color: #999; margin-left: 1rem;">{{ entity.ibits|length }} ibit(s)</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty">No entities stored yet.</div>
+</div>
+{% endif %}
+{% endblock %}

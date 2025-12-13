@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+PIPFILE.lock
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+knowledger.db
+knowledger_backup_*.db
+
+# Environment variables
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Static files (generated)
+static/graph.html
+
+# Third-party libraries
+lib/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# uv
+.uv/

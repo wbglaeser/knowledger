@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Knowledger{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<div class="stats">
+    <div class="stat-card">
+        <h3>{{ ibits|length }}</h3>
+        <p>Ibits</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ categories|length }}</h3>
+        <p>Categories</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ entities|length }}</h3>
+        <p>Entities</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ dates|length }}</h3>
+        <p>Dates</p>
+    </div>
+</div>
+
+<h2>Ibits</h2>
+{% if ibits %}
+<div class="card">
+    <ul class="ibit-list">
+        {% for ibit in ibits %}
+        <li class="ibit-item">
+            <div class="ibit-id">ID: {{ ibit.id }} • Added: {{ ibit.date_added.strftime('%Y-%m-%d %H:%M') }}{% if ibit.source %} • Source: {{ ibit.source }}{% endif %}</div>
+            <div class="ibit-text"><a href="/ibits/{{ ibit.id }}" class="link">{{ ibit.text }}</a></div>
+            <div class="tags">
+                {% for category in ibit.categories %}
+                <span class="tag">#{{ category.name }}</span>
+                {% endfor %}
+                {% for entity in ibit.entities %}
+                <span class="tag entity">@{{ entity.name }}</span>
+                {% endfor %}
+                {% for date in ibit.dates %}
+                <span class="tag date">^{{ date.date }}</span>
+                {% endfor %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty">No ibits stored yet.</div>
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
+    <div>
+        <h2>Categories</h2>
+        {% if categories %}
+        <div class="card">
+            <ul class="ibit-list-minor">
+                {% for category in categories %}
+                <li class="ibit-item">
+                    <a href="/categories/{{ category.name }}" class="link">
+                        <strong>#{{ category.name }}</strong>
+                    </a>
+                    <span style="color: #999; margin-left: 1rem;">{{ category.ibits|length }} ibit(s)</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="empty">No categories stored yet.</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h2>Entities</h2>
+        {% if entities %}
+        <div class="card">
+            <ul class="ibit-list-minor">
+                {% for entity in entities %}
+                <li class="ibit-item">
+                    <a href="/entities/{{ entity.name }}" class="link">
+                        <strong>@{{ entity.name }}</strong>
+                    </a>
+                    <span style="color: #999; margin-left: 1rem;">{{ entity.ibits|length }} ibit(s)</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="empty">No entities stored yet.</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h2>Sources</h2>
+        {% if sources %}
+        <div class="card">
+            <ul class="ibit-list-minor">
+                {% for source, source_ibits in sources.items() %}
+                <li class="ibit-item">
+                    <a href="/sources/{{ source }}" class="link">
+                        <strong>&{{ source }}</strong>
+                    </a>
+                    <span style="color: #999; margin-left: 1rem;">{{ source_ibits|length }} ibit(s)</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="empty">No sources stored yet.</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h2>Dates</h2>
+        {% if dates %}
+        <div class="card">
+            <ul class="ibit-list-minor">
+                {% for date in dates %}
+                <li class="ibit-item">
+                    <a href="/dates/{{ date.date }}" class="link">
+                        <strong>^{{ date.date }}</strong>
+                    </a>
+                    <span style="color: #999; margin-left: 1rem;">{{ date.ibits|length }} ibit(s)</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="empty">No dates stored yet.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
