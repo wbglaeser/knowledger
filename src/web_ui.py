@@ -42,7 +42,8 @@ async def home(request: Request, username: str = Depends(verify_credentials)):
     try:
         ibits = session.query(Ibit).order_by(Ibit.date_added.desc()).all()
         categories = session.query(Category).order_by(Category.name).all()
-        entities = session.query(Entity).order_by(Entity.name).all()
+        # Only show non-alias entities
+        entities = session.query(Entity).filter(Entity.linked_to_id == None).order_by(Entity.name).all()
         dates = session.query(Date).order_by(Date.date.desc()).all()
         
         # Get unique sources
@@ -195,7 +196,8 @@ async def view_category(request: Request, category_name: str, username: str = De
 async def list_entities(request: Request, username: str = Depends(verify_credentials)):
     session = DBSession()
     try:
-        entities = session.query(Entity).order_by(Entity.name).all()
+        # Only show entities that aren't aliases of other entities
+        entities = session.query(Entity).filter(Entity.linked_to_id == None).order_by(Entity.name).all()
         return templates.TemplateResponse("entities.html", {
             "request": request,
             "entities": entities
@@ -213,9 +215,67 @@ async def view_entity(request: Request, entity_name: str, username: str = Depend
                 "request": request,
                 "message": f"Entity '{entity_name}' not found"
             })
+        
+        # Get all other entities (excluding this one and already linked entities)
+        all_entities = session.query(Entity).filter(
+            Entity.id != entity.id,
+            Entity.linked_to_id == None  # Only show entities that aren't aliases of others
+        ).order_by(Entity.name).all()
+        
+        # Get entities that are linked to this one (aliases)
+        aliases = session.query(Entity).filter(Entity.linked_to_id == entity.id).all()
+        
         return templates.TemplateResponse("entity_detail.html", {
             "request": request,
-            "entity": entity
+            "entity": entity,
+            "all_entities": all_entities,
+            "aliases": aliases
+        })
+    finally:
+        session.close()
+
+@app.post("/entities/{entity_name}/merge")
+async def merge_entity(
+    request: Request,
+    entity_name: str,
+    target_entity: str = Form(...),
+    username: str = Depends(verify_credentials)
+):
+    """Merge this entity into the target entity (makes this an alias of target)"""
+    session = DBSession()
+    try:
+        source_entity = session.query(Entity).filter_by(name=entity_name).first()
+        target = session.query(Entity).filter_by(name=target_entity).first()
+        
+        if not source_entity or not target:
+            return templates.TemplateResponse("error.html", {
+                "request": request,
+                "message": "Entity not found"
+            })
+        
+        if source_entity.id == target.id:
+            return templates.TemplateResponse("error.html", {
+                "request": request,
+                "message": "Cannot merge an entity with itself"
+            })
+        
+        # Transfer all ibits from source to target
+        for ibit in source_entity.ibits:
+            if target not in ibit.entities:
+                ibit.entities.append(target)
+            if source_entity in ibit.entities:
+                ibit.entities.remove(source_entity)
+        
+        # Mark source as alias of target
+        source_entity.linked_to_id = target.id
+        
+        session.commit()
+        return RedirectResponse(url=f"/entities/{target_entity}", status_code=303)
+    except Exception as e:
+        session.rollback()
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "message": f"Error merging entities: {e}"
         })
     finally:
         session.close()
@@ -314,7 +374,8 @@ async def generate_graph(username: str = Depends(verify_credentials)):
         # Fetch all data
         ibits = session.query(Ibit).all()
         categories = session.query(Category).all()
-        entities = session.query(Entity).all()
+        # Only include entities that aren't aliases
+        entities = session.query(Entity).filter(Entity.linked_to_id == None).all()
         dates = session.query(Date).all()
         
         # Calculate node sizes based on number of connections

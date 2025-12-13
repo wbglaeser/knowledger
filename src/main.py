@@ -49,7 +49,11 @@ Extract:
    - Use lowercase, 1-3 words each
    - Be specific and avoid overly broad categories
 2. Entities (people, places, organizations, concepts - important nouns)
-3. Dates (in YYYY-MM-DD, YYYY-MM, or YYYY format if mentioned)
+3. Dates (in YYYY-MM-DD, YYYY-MM, or YYYY format if mentioned):
+   - ALWAYS use the MOST PRECISE date format available
+   - If a full date (YYYY-MM-DD) is mentioned, ONLY include that - do NOT also include the year or month
+   - If only month and year (YYYY-MM) are mentioned, ONLY include that - do NOT also include the year
+   - Example: For "November 9, 1989" -> ["1989-11-09"] NOT ["1989-11-09", "1989-11", "1989"]
 4. Source (if the text mentions where this information came from)
 
 Respond with ONLY valid JSON in this exact format:

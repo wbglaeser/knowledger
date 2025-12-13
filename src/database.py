@@ -43,7 +43,9 @@ class Entity(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
+    linked_to_id = Column(Integer, ForeignKey('entities.id'), nullable=True)  # For entity aliasing
     ibits = relationship("Ibit", secondary=ibit_entities, back_populates="entities")
+    linked_to = relationship("Entity", remote_side=[id], foreign_keys=[linked_to_id])  # Self-referential
 
 class Date(Base):
     __tablename__ = 'dates'

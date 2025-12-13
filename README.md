@@ -22,6 +22,7 @@ An intelligent knowledge management system that captures, categorizes, and quizz
 - **Interactive Graph** - Visualize connections between ibits, categories, entities, dates, and sources
 - **Quiz Page** - Take interactive quizzes with immediate feedback
 - **Full CRUD** - Edit ibit text, source, categories, entities, and dates
+- **Entity Linking** - Merge duplicate entities (e.g., "Mozart" and "Wolfgang Amadeus Mozart")
 - **Password Protected** - HTTP Basic Authentication
 
 ### 🤖 AI Features
@@ -77,6 +78,17 @@ The Berlin Wall fell on November 9, 1989, marking the end of the Cold War accord
 - Entities: `Berlin Wall`, `Cold War`
 - Dates: `1989-11-09`
 - Source: `Wikipedia`
+
+### Merging Duplicate Entities
+
+If the AI extracts similar entities with different names (e.g., "Mozart" and "Wolfgang Amadeus Mozart"):
+
+1. Go to the entity detail page (e.g., `/entities/Mozart`)
+2. Use the "Merge Entity" form at the bottom
+3. Select the target entity to merge into (e.g., "Wolfgang Amadeus Mozart")
+4. All ibits will be transferred to the target entity
+5. The merged entity becomes an alias (shown but hidden from main lists)
+6. The graph will now show all connections under the primary entity
 
 ## Tech Stack
 

@@ -5,6 +5,17 @@
 {% block content %}
 <h2>Entity: @{{ entity.name }}</h2>
 
+{% if aliases %}
+<div class="card" style="background-color: #f0f8ff; margin-bottom: 1rem;">
+    <p style="margin-bottom: 0.5rem;"><strong>Aliases:</strong></p>
+    <p style="color: #666;">
+        {% for alias in aliases %}
+            {{ alias.name }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    </p>
+</div>
+{% endif %}
+
 <div class="card">
     <p style="margin-bottom: 1.5rem;"><strong>{{ entity.ibits|length }}</strong> ibit(s) associated with this entity</p>
     
@@ -19,6 +30,28 @@
     </ul>
     {% endif %}
 </div>
+
+{% if all_entities %}
+<div class="card">
+    <h3>Merge Entity</h3>
+    <p style="color: #666; margin-bottom: 1rem;">
+        If this entity is a duplicate or alias of another entity, you can merge it. 
+        This will transfer all associated ibits to the target entity and mark this as an alias.
+    </p>
+    <form method="POST" action="/entities/{{ entity.name }}/merge">
+        <div class="form-group">
+            <label for="target_entity">Merge "@{{ entity.name }}" into:</label>
+            <select name="target_entity" id="target_entity" required style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">-- Select target entity --</option>
+                {% for ent in all_entities %}
+                <option value="{{ ent.name }}">@{{ ent.name }} ({{ ent.ibits|length }} ibits)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="button" style="background-color: #ff6b6b;">Merge Entity</button>
+    </form>
+</div>
+{% endif %}
 
 <a href="/entities" class="link">← Back to all entities</a>
 {% endblock %}
