@@ -35,10 +35,11 @@ An intelligent knowledge management system that captures, categorizes, and quizz
 
 ## Setup
 
-1. **Install dependencies** (using [uv](https://docs.astral.sh/uv/)):
-   ```bash
-   uv sync
-   ```
+### Option 1: Docker (If Docker is installed)
+
+1. **Install Docker** (if not already installed):
+   - macOS: [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+   - Linux: [Docker Engine](https://docs.docker.com/engine/install/)
 
 2. **Configure environment** - Create `.env` file:
    ```env
@@ -48,22 +49,53 @@ An intelligent knowledge management system that captures, categorizes, and quizz
    WEB_PASSWORD=your_secure_password
    ```
 
+3. **Start services**:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Initialize database** (first time only):
+   ```bash
+   docker-compose exec web-ui uv run python -c "from src.database import init_db; init_db()"
+   ```
+
+Access the web UI at `http://localhost:8000`
+
+**Useful commands:**
+```bash
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild after code changes
+docker-compose up -d --build
+```
+
+### Option 2: Local Development (No Docker needed)
+
+1. **Install dependencies** (using [uv](https://docs.astral.sh/uv/)):
+   ```bash
+   uv sync
+   ```
+
+2. **Configure environment** - Create `.env` file (same as above)
+
 3. **Initialize database**:
    ```bash
    uv run python -c "from src.database import init_db; init_db()"
    ```
 
-## Usage
+4. **Start services** (in separate terminals):
+   ```bash
+   # Terminal 1: Telegram Bot
+   uv run python src/main.py
+   
+   # Terminal 2: Web UI
+   uv run python src/web_ui.py
+   ```
 
-### Start the Telegram Bot
-```bash
-uv run python src/main.py
-```
-
-### Start the Web UI
-```bash
-uv run python src/web_ui.py
-```
 Access at `http://localhost:8000`
 
 ### Example Interactions

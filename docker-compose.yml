@@ -1,0 +1,38 @@
+services:
+  telegram-bot:
+    build: .
+    container_name: knowledger-bot
+    restart: unless-stopped
+    command: uv run python src/main.py
+    volumes:
+      - ./data:/data
+      - ./knowledger.db:/app/knowledger.db
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
+
+  web-ui:
+    build: .
+    container_name: knowledger-web
+    restart: unless-stopped
+    command: uv run python src/web_ui.py
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      - ./knowledger.db:/app/knowledger.db
+      - ./static:/app/static
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEB_USERNAME=${WEB_USERNAME:-admin}
+      - WEB_PASSWORD=${WEB_PASSWORD:-changeme}
+    env_file:
+      - .env
+    depends_on:
+      - telegram-bot
+
+volumes:
+  data:

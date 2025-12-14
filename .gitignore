@@ -68,3 +68,6 @@ htmlcov/
 
 # uv
 .uv/
+
+# Docker
+docker-compose.override.yml
