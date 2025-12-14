@@ -70,5 +70,13 @@
     </form>
 </div>
 
+<div class="card" style="border-left: 4px solid #ff6b6b;">
+    <h3 style="margin-bottom: 1rem; color: #ff6b6b;">Danger Zone</h3>
+    <p style="color: #666; margin-bottom: 1rem;">Once you delete an ibit, there is no going back. Please be certain.</p>
+    <form method="POST" action="/ibits/{{ ibit.id }}/delete" onsubmit="return confirm('Are you sure you want to delete this ibit? This action cannot be undone.');">
+        <button type="submit" class="btn" style="background-color: #ff6b6b;">Delete Ibit</button>
+    </form>
+</div>
+
 <a href="/ibits" class="link">← Back to all ibits</a>
 {% endblock %}

@@ -163,6 +163,33 @@ async def edit_ibit(
     finally:
         session.close()
 
+@app.post("/ibits/{ibit_id}/delete")
+async def delete_ibit(
+    ibit_id: int,
+    username: str = Depends(verify_credentials)
+):
+    """Delete an ibit"""
+    session = DBSession()
+    try:
+        ibit = session.query(Ibit).filter_by(id=ibit_id).first()
+        if not ibit:
+            return templates.TemplateResponse("error.html", {
+                "request": {},
+                "message": f"Ibit with ID {ibit_id} not found"
+            })
+        
+        session.delete(ibit)
+        session.commit()
+        return RedirectResponse(url="/ibits", status_code=303)
+    except Exception as e:
+        session.rollback()
+        return templates.TemplateResponse("error.html", {
+            "request": {},
+            "message": f"Error deleting ibit: {e}"
+        })
+    finally:
+        session.close()
+
 @app.get("/categories", response_class=HTMLResponse)
 async def list_categories(request: Request, username: str = Depends(verify_credentials)):
     session = DBSession()
