@@ -71,3 +71,11 @@ htmlcov/
 
 # Docker
 docker-compose.override.yml
+
+# Backups
+backups/
+backup.log
+backup_error.log
+
+# rclone config (contains secrets)
+rclone/

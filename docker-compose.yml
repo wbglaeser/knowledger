@@ -34,5 +34,21 @@ services:
     depends_on:
       - telegram-bot
 
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: knowledger-backup
+    restart: unless-stopped
+    volumes:
+      - ./knowledger.db:/app/knowledger.db:ro  # Read-only access to database
+      - ./backups:/backups  # Local backup storage
+      - ./rclone:/root/.config/rclone:ro  # rclone config from ./rclone directory
+    environment:
+      - TZ=Europe/Berlin  # Set your timezone
+    depends_on:
+      - web-ui
+      - telegram-bot
+
 volumes:
   data:

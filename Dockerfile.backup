@@ -1,0 +1,27 @@
+# Backup service image with rclone
+FROM python:3.14-slim
+
+WORKDIR /app
+
+# Install rclone
+RUN apt-get update && \
+    apt-get install -y curl unzip && \
+    curl https://rclone.org/install.sh | bash && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install uv
+
+# Copy backup script
+COPY scripts/backup.py /app/backup.py
+
+# Create directories
+RUN mkdir -p /backups /data
+
+# Run backup in a loop (daily)
+CMD while true; do \
+    python /app/backup.py; \
+    echo "Sleeping for 24 hours..."; \
+    sleep 86400; \
+    done
