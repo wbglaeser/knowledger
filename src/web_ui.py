@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from database import init_db, Ibit, Category, Entity, Date
 from pyvis.network import Network
@@ -362,16 +361,13 @@ async def quiz_page(request: Request, username: str = Depends(verify_credentials
 
 @app.get("/api/quiz")
 async def get_quiz(username: str = Depends(verify_credentials)):
-    from quiz import generate_ai_quiz_question
-    session = DBSession()
-    try:
-        question = generate_ai_quiz_question(session, openai_client)
-        if question:
-            return question
-        else:
-            raise HTTPException(status_code=500, detail="Unable to generate quiz")
-    finally:
-        session.close()
+    from core import generate_quiz
+    
+    question = generate_quiz()
+    if question:
+        return question
+    else:
+        raise HTTPException(status_code=500, detail="Unable to generate quiz")
 
 @app.post("/api/quiz/answer")
 async def check_quiz_answer(request: Request, username: str = Depends(verify_credentials)):
