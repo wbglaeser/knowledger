@@ -1,16 +1,11 @@
 import os
-import logging
 from dotenv import load_dotenv
 from database import init_db, Ibit, Category, Entity, Date
 from openai import OpenAI
 from llm_service import extract_metadata_with_ai, transcribe_audio_with_ai
+from logger import get_logger
 
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 load_dotenv()
 

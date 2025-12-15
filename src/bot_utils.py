@@ -2,9 +2,9 @@
 Utility functions for Telegram bot operations
 """
 import tempfile
-import logging
+from logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def download_voice_message(voice, bot):

@@ -17,22 +17,26 @@
             background: #f5f5f5;
         }
         nav {
-            background: #2c3e50;
-            color: white;
-            padding: 1rem 2rem;
+            background: white;
+            color: #2c3e50;
+            padding: 2rem 4rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         nav h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            margin: 0;
         }
         nav ul {
             list-style: none;
             display: flex;
             gap: 2rem;
+            margin: 0;
         }
         nav a {
-            color: #ecf0f1;
+            color: #2c3e50;
             text-decoration: none;
             transition: color 0.3s;
         }
@@ -58,11 +62,12 @@
             margin-bottom: 2rem;
         }
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem;
+            background: white;
+            color: #333;
+            padding: .5rem;
             border-radius: 8px;
             text-align: center;
+            border: 1px solid #ddd;
         }
         .stat-card h3 {
             font-size: 2.5rem;
@@ -186,10 +191,9 @@
 </head>
 <body>
     <nav>
-        <h1>🧠 Knowledger</h1>
+        <h1>Knowledger</h1>
         <ul>
             <li><a href="/">Home</a></li>
-            <li><a href="/dates">Dates</a></li>
             <li><a href="/quiz">Quiz</a></li>
             <li><a href="/graph">Graph</a></li>
         </ul>

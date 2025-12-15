@@ -1,11 +1,6 @@
-import logging
+from logger import get_logger
 
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def extract_metadata_with_ai(ibit_text, existing_categories, openai_client):
     """Use OpenAI to extract categories, entities, dates, and source from ibit text"""

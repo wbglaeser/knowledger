@@ -1,19 +1,13 @@
 from dotenv import load_dotenv
 import os
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
-import logging
 from core import add_ibit, edit_ibit, add_categories, delete_ibit, list_items, filter_by_entity, add_voice_message
+from logger import get_logger
 
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Define command handlers
 async def start(update):
