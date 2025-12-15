@@ -361,13 +361,69 @@ async def quiz_page(request: Request, username: str = Depends(verify_credentials
 
 @app.get("/api/quiz")
 async def get_quiz(username: str = Depends(verify_credentials)):
-    from core import generate_quiz
+    from llm_service import generate_quiz_question_with_ai
+    from database import QuizProgress
+    import random
     
-    question = generate_quiz()
-    if question:
-        return question
-    else:
-        raise HTTPException(status_code=500, detail="Unable to generate quiz")
+    session = DBSession()
+    try:
+        if not openai_client:
+            raise HTTPException(status_code=500, detail="OpenAI client not configured")
+        
+        # Get all ibit IDs
+        all_ibit_ids = [ibit.id for ibit in session.query(Ibit).all()]
+        
+        if not all_ibit_ids:
+            raise HTTPException(status_code=500, detail="No ibits available for quiz")
+        
+        # Load user's quiz progress from database
+        progress = session.query(QuizProgress).filter_by(username=username).first()
+        
+        if not progress:
+            # Create new progress entry
+            progress = QuizProgress(username=username, used_ibit_ids="")
+            session.add(progress)
+            session.commit()
+        
+        # Parse used IDs
+        used_ids = set()
+        if progress.used_ibit_ids:
+            used_ids = set(int(id_str) for id_str in progress.used_ibit_ids.split(",") if id_str)
+        
+        # Calculate remaining pool
+        pool = set(all_ibit_ids) - used_ids
+        
+        # If pool is empty or ibits were added/removed, reset the cycle
+        if not pool:
+            used_ids = set()
+            pool = set(all_ibit_ids)
+        
+        # Pick a random ibit from the pool
+        selected_id = random.choice(list(pool))
+        used_ids.add(selected_id)
+        
+        # Save progress back to database
+        progress.used_ibit_ids = ",".join(str(id) for id in sorted(used_ids))
+        session.commit()
+        
+        # Get the ibit and generate question
+        selected_ibit = session.query(Ibit).filter_by(id=selected_id).first()
+        quiz_data = generate_quiz_question_with_ai(selected_ibit.text, openai_client)
+        
+        if not quiz_data:
+            raise HTTPException(status_code=500, detail="Failed to generate quiz question")
+        
+        quiz_data['ibit_id'] = selected_ibit.id
+        quiz_data['ibit_text'] = selected_ibit.text
+        quiz_data['progress'] = {
+            'current': len(used_ids),
+            'total': len(all_ibit_ids)
+        }
+        
+        return quiz_data
+        
+    finally:
+        session.close()
 
 @app.post("/api/quiz/answer")
 async def check_quiz_answer(request: Request, username: str = Depends(verify_credentials)):

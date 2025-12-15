@@ -54,6 +54,13 @@ class Date(Base):
     date = Column(String, unique=True)  # Format: YYYY-MM-DD or YYYY-MM or YYYY
     ibits = relationship("Ibit", secondary=ibit_dates, back_populates="dates")
 
+class QuizProgress(Base):
+    __tablename__ = 'quiz_progress'
+    
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True)
+    used_ibit_ids = Column(String)  # Comma-separated list of ibit IDs already shown
+
 def init_db(db_uri="sqlite:///knowledger.db"):
     engine = create_engine(db_uri)
     Base.metadata.create_all(engine)

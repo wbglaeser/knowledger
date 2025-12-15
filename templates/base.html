@@ -19,29 +19,52 @@
         nav {
             background: white;
             color: #2c3e50;
-            padding: 2rem 4rem;
+            padding: 1rem 2rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
         nav h1 {
-            font-size: 2rem;
+            font-size: 1.5rem;
             margin: 0;
         }
         nav ul {
             list-style: none;
             display: flex;
-            gap: 2rem;
+            gap: 1.5rem;
             margin: 0;
+            flex-wrap: wrap;
         }
         nav a {
             color: #2c3e50;
             text-decoration: none;
             transition: color 0.3s;
+            font-size: 1rem;
         }
         nav a:hover {
             color: #3498db;
+        }
+        
+        @media (max-width: 768px) {
+            nav {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            nav h1 {
+                font-size: 1.25rem;
+            }
+            nav ul {
+                width: 100%;
+                gap: 1rem;
+                justify-content: space-between;
+            }
+            nav a {
+                font-size: 0.9rem;
+            }
         }
         .container {
             max-width: 1200px;

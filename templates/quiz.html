@@ -3,7 +3,12 @@
 {% block title %}Quiz - Knowledger{% endblock %}
 
 {% block content %}
-<h2>Knowledge Quiz</h2>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="margin: 0;">Knowledge Quiz</h2>
+    <div id="progress-indicator" style="font-size: 1.2rem; color: #666; font-weight: 500;">
+        <!-- Progress will be shown here -->
+    </div>
+</div>
 
 <div id="quiz-container" class="card">
     <div id="loading" style="text-align: center; padding: 2rem;">
@@ -91,6 +96,12 @@ async function loadQuiz() {
 function displayQuiz() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('quiz-content').style.display = 'block';
+    
+    // Update progress indicator
+    if (currentQuiz.progress) {
+        document.getElementById('progress-indicator').textContent = 
+            `${currentQuiz.progress.current} / ${currentQuiz.progress.total}`;
+    }
     
     // Hide context initially
     document.getElementById('ibit-context').style.display = 'none';
