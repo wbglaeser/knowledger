@@ -21,6 +21,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/knowledger
+            # Switch to HTTPS if using SSH
+            git remote get-url origin | grep -q "git@github.com" && git remote set-url origin https://github.com/$(git remote get-url origin | sed 's/.*:\(.*\)\.git/\1/').git || true
             git pull origin main
             docker compose down
             docker compose up -d --build
