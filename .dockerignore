@@ -42,3 +42,9 @@ static/
 
 # Data directory
 data/
+
+# SSL certificates (volume-mounted, not needed in build)
+certbot/
+
+# nginx backups
+nginx/*.bak
