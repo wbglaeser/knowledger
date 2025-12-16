@@ -44,18 +44,15 @@ class Ibit(Base):
     entities = relationship("Entity", secondary=ibit_entities, back_populates="ibits")
     dates = relationship("Date", secondary=ibit_dates, back_populates="ibits")
 
-class Category(Base):
-    __tablename__ = 'categories'
     __table_args__ = (UniqueConstraint('user_id', 'name', name='unique_category_per_user'),)
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     name = Column(String)
-    user = relationship("User")
+    user = relationship("User"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True)
     ibits = relationship("Ibit", secondary=ibit_categories, back_populates="categories")
-
-class Entity(Base):
-    __tablename__ = 'entities'
     __table_args__ = (UniqueConstraint('user_id', 'name', name='unique_entity_per_user'),)
 
     id = Column(Integer, primary_key=True)
@@ -63,29 +60,33 @@ class Entity(Base):
     name = Column(String)
     linked_to_id = Column(Integer, ForeignKey('entities.id'), nullable=True)  # For entity aliasing
     user = relationship("User", foreign_keys=[user_id])
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True)
+    linked_to_id = Column(Integer, ForeignKey('entities.id'), nullable=True)  # For entity aliasing
     ibits = relationship("Ibit", secondary=ibit_entities, back_populates="entities")
     linked_to = relationship("Entity", remote_side=[id], foreign_keys=[linked_to_id])  # Self-referential
-
-class Date(Base):
-    __tablename__ = 'dates'
     __table_args__ = (UniqueConstraint('user_id', 'date', name='unique_date_per_user'),)
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     date = Column(String)  # Format: YYYY-MM-DD or YYYY-MM or YYYY
     user = relationship("User")
-    ibits = relationship("Ibit", secondary=ibit_dates, back_populates="dates")
 
+    id = Column(Integer, primary_key=True)
+    date = Column(String, unique=True)  # Format: YYYY-MM-DD or YYYY-MM or YYYY
+    ibit_id = Column(Integer, ForeignKey('users.id'), unique=True, nullable=False)
+    username = Column(String)  # Legacy field, will be deprecated
+    used_ibit_ids = Column(String)  # Comma-separated list of ibit IDs already shown
+    user = relationship("User")
 class QuizProgress(Base):
     __tablename__ = 'quiz_progress'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), unique=True, nullable=False)
-    username = Column(String)  # Legacy field, will be deprecated
+    username = Column(String, unique=True)
     used_ibit_ids = Column(String)  # Comma-separated list of ibit IDs already shown
-    user = relationship("User")
 
 def init_db(db_uri="sqlite:///knowledger.db"):
     engine = create_engine(db_uri)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)
+

@@ -1,7 +1,9 @@
 from dotenv import load_dotenv
 import os
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
-from core import add_ibit, edit_ibit, add_categories, delete_ibit, list_items, filter_by_entity, add_voice_message
+from core import (add_ibit, edit_ibit, add_categories, delete_ibit, list_items, 
+                  filter_by_entity, add_voice_message, link_telegram_account, 
+                  get_user_by_telegram_id)
 from logger import get_logger
 
 load_dotenv()
@@ -12,42 +14,138 @@ logger = get_logger(__name__)
 # Define command handlers
 async def start(update):
     logger.info("Command /start received")
-    await update.message.reply_text("Welcome to the Knowledger Bot! Send me an ibit to store it.")
+    await update.message.reply_text(
+        "Welcome to the Knowledger Bot! 🧠\n\n"
+        "To get started, link your web account:\n"
+        "1. Login at the website\n"
+        "2. Go to Account Settings\n"
+        "3. Generate a linking code\n"
+        "4. Send me: /link YOUR_CODE\n\n"
+        "Once linked, you can send me ibits to store them!"
+    )
+
+async def handle_link(update, context):
+    """Link Telegram account to web account using code."""
+    logger.info("Command /link received")
+    
+    if not context.args:
+        await update.message.reply_text(
+            "❌ Please provide a linking code.\n\n"
+            "Usage: /link YOUR_CODE\n\n"
+            "Get your code from Account Settings on the website."
+        )
+        return
+    
+    code = context.args[0].upper()
+    telegram_user_id = str(update.effective_user.id)
+    
+    # Call core function (no direct DB access)
+    result = link_telegram_account(code, telegram_user_id)
+    
+    if result.get("success"):
+        await update.message.reply_text(
+            f"✅ Account linked successfully!\n\n"
+            f"Email: {result['email']}\n\n"
+            "You can now use the bot to manage your knowledge items. "
+            "Send me any text to create an ibit!"
+        )
+    elif result.get("already_linked"):
+        await update.message.reply_text(
+            f"✓ Your account is already linked to {result['email']}\n\n"
+            "You're all set! Send me ibits to store them."
+        )
+    else:
+        await update.message.reply_text(
+            f"❌ {result.get('error', 'Invalid or expired linking code.')}\n\n"
+            "Please generate a new code from Account Settings on the website."
+        )
+
+async def require_linked_account(update):
+    """Check if user is linked via core.py, send error message if not."""
+    telegram_user_id = str(update.effective_user.id)
+    user_info = get_user_by_telegram_id(telegram_user_id)
+    
+    if not user_info:
+        await update.message.reply_text(
+            "❌ Your Telegram account is not linked.\n\n"
+            "To use this bot, you need to:\n"
+            "1. Create an account on the website\n"
+            "2. Go to Account Settings\n"
+            "3. Generate a linking code\n"
+            "4. Send me: /link YOUR_CODE"
+        )
+        return None
+    
+    return user_info['user_id']
 
 async def handle_add_ibit(update, _):
     logger.info("Handling a new ibit")
+    
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
+    
     ibit_text = update.message.text
-    response_msg = add_ibit(ibit_text)
+    response_msg = add_ibit(ibit_text, user_id)
     await update.message.reply_text(response_msg)
 
 async def handle_edit_ibit(update, context):
     logger.info("Handling edit request")
-    response_msg = edit_ibit(context)
+    
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
+    
+    response_msg = edit_ibit(context, user_id)
     await update.message.reply_text(response_msg)
     
 async def handle_add_categories(update, context):
     logger.info("Command /addcat received")
-    response_msg = add_categories(context)
+    
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
+    
+    response_msg = add_categories(context, user_id)
     await update.message.reply_text(response_msg)
 
 async def handle_delete_ibit(update, context):
     logger.info("Command /delete received")
-    response_msg = delete_ibit(context)
+    
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
+    
+    response_msg = delete_ibit(context, user_id)
     await update.message.reply_text(response_msg)
 
 async def handle_list_items(update, context):
     logger.info("Command /list received")
-    response_msg = list_items(context)
+    
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
+    
+    response_msg = list_items(context, user_id)
     await update.message.reply_text(response_msg)
 
 async def handle_filter_by_entity(update, context):
     logger.info("Command /filterentity received")
-    response_msg = filter_by_entity(context)
+    
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
+    
+    response_msg = filter_by_entity(context, user_id)
     await update.message.reply_text(response_msg)
     
           
 async def handle_voice(update, context):
     logger.info("Handling voice message")
+    
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
     
     temp_path = None
     try:
@@ -56,7 +154,7 @@ async def handle_voice(update, context):
         status_msg = await update.message.reply_text("🎤 Transcribing voice message...")
         temp_path = await download_voice_message(update.message.voice, context.bot)
         await status_msg.edit_text("🎤 Voice message downloaded, transcribing...")
-        response_msg = add_voice_message(temp_path)
+        response_msg = add_voice_message(temp_path, user_id)
         await update.message.reply_text(response_msg)
             
     except Exception as e:
@@ -73,9 +171,13 @@ async def quiz(update, _):
     
     logger.info("Command /quiz received")
     
+    user_id = await require_linked_account(update)
+    if not user_id:
+        return
+    
     try:
         # Generate quiz question
-        question = generate_quiz()
+        question = generate_quiz(user_id)
         
         if question is None:
             await update.message.reply_text("Unable to generate quiz. Make sure you have ibits stored and OpenAI is configured.")
@@ -130,6 +232,7 @@ def initialise_bot():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("link", handle_link))
     application.add_handler(CommandHandler("list", handle_list_items))
     application.add_handler(CommandHandler("edit", handle_edit_ibit))
     application.add_handler(CommandHandler("delete", handle_delete_ibit))

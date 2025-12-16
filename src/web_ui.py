@@ -1,49 +1,216 @@
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Cookie, Response
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from database import init_db, Ibit, Category, Entity, Date
+from src.database import init_db, Ibit, Category, Entity, Date, User, QuizProgress
 from pyvis.network import Network
 from dotenv import load_dotenv
 from openai import OpenAI
-import secrets
+from typing import Optional
+from src import auth
 import os
 
 load_dotenv()
 
 app = FastAPI(title="Knowledger Database UI")
 templates = Jinja2Templates(directory="templates")
-security = HTTPBasic()
 
 DBSession = init_db()
 
 # Load credentials from environment
-WEB_USERNAME = os.getenv("WEB_USERNAME", "admin")
-WEB_PASSWORD = os.getenv("WEB_PASSWORD", "changeme")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
-    """Verify HTTP Basic Auth credentials"""
-    correct_username = secrets.compare_digest(credentials.username, WEB_USERNAME)
-    correct_password = secrets.compare_digest(credentials.password, WEB_PASSWORD)
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
+# Custom exception for redirecting to login
+class AuthRedirectException(Exception):
+    pass
+
+# Exception handler to redirect unauthenticated users to login
+@app.exception_handler(AuthRedirectException)
+async def auth_redirect_handler(request: Request, exc: AuthRedirectException):
+    return RedirectResponse(url="/login", status_code=302)
+
+# Authentication dependency
+def get_current_user(request: Request, session_token: Optional[str] = Cookie(None)) -> User:
+    """Get current user from session token cookie, redirect to login if not authenticated."""
+    if not session_token:
+        raise AuthRedirectException()
+    
+    db = DBSession()
+    try:
+        user = auth.get_user_from_token(db, session_token)
+        if not user:
+            raise AuthRedirectException()
+        return user
+    finally:
+        db.close()
+
+# Optional authentication for pages that can work with or without login
+def get_current_user_optional(session_token: Optional[str] = Cookie(None)) -> Optional[User]:
+    """Get current user if authenticated, None otherwise."""
+    if not session_token:
+        return None
+    
+    db = DBSession()
+    try:
+        return auth.get_user_from_token(db, session_token)
+    finally:
+        db.close()
+
+# Authentication endpoints
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, user: Optional[User] = Depends(get_current_user_optional)):
+    """Show login page or redirect if already logged in."""
+    if user:
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login")
+async def login(email: str = Form(...), password: str = Form(...)):
+    """Authenticate user and set session cookie."""
+    db = DBSession()
+    try:
+        user = auth.authenticate_user(db, email, password)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password"
+            )
+        
+        # Create JWT token
+        token = auth.create_access_token(data={"sub": str(user.id)})
+        
+        # Set cookie and redirect
+        response = RedirectResponse(url="/", status_code=302)
+        response.set_cookie(
+            key="session_token",
+            value=token,
+            httponly=True,
+            max_age=60 * 60 * 24 * 7,  # 7 days
+            samesite="lax"
         )
-    return credentials.username
+        return response
+    finally:
+        db.close()
+
+@app.get("/signup", response_class=HTMLResponse)
+async def signup_page(request: Request, user: Optional[User] = Depends(get_current_user_optional)):
+    """Show signup page or redirect if already logged in."""
+    if user:
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse("signup.html", {"request": request})
+
+@app.post("/signup")
+async def signup(email: str = Form(...), password: str = Form(...), password_confirm: str = Form(...)):
+    """Create new user account."""
+    if password != password_confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+    
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters"
+        )
+    
+    db = DBSession()
+    try:
+        user = auth.create_user(db, email, password)
+        
+        # Create JWT token
+        token = auth.create_access_token(data={"sub": str(user.id)})
+        
+        # Set cookie and redirect
+        response = RedirectResponse(url="/", status_code=302)
+        response.set_cookie(
+            key="session_token",
+            value=token,
+            httponly=True,
+            max_age=60 * 60 * 24 * 7,  # 7 days
+            samesite="lax"
+        )
+        return response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    finally:
+        db.close()
+
+@app.get("/logout")
+async def logout():
+    """Logout user by clearing session cookie."""
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(key="session_token")
+    return response
+
+@app.get("/account", response_class=HTMLResponse)
+async def account_page(request: Request, user: User = Depends(get_current_user)):
+    """Account settings page with Telegram linking."""
+    return templates.TemplateResponse("account.html", {
+        "request": request,
+        "user": user
+    })
+
+@app.post("/account/generate-code")
+async def generate_linking_code(user: User = Depends(get_current_user)):
+    """Generate a new Telegram linking code for the user."""
+    db = DBSession()
+    try:
+        code = auth.create_linking_code(db, user.id)
+        return JSONResponse({"code": code})
+    finally:
+        db.close()
+
+@app.post("/account/delete")
+async def delete_account(user: User = Depends(get_current_user)):
+    """Delete user account and all associated data."""
+    db = DBSession()
+    try:
+        # Delete all user data (cascading)
+        db.query(QuizProgress).filter(QuizProgress.user_id == user.id).delete()
+        
+        # Delete many-to-many relationships for ibits
+        for ibit in db.query(Ibit).filter(Ibit.user_id == user.id).all():
+            ibit.categories.clear()
+            ibit.entities.clear()
+            ibit.dates.clear()
+        
+        # Delete main entities
+        db.query(Ibit).filter(Ibit.user_id == user.id).delete()
+        db.query(Category).filter(Category.user_id == user.id).delete()
+        db.query(Entity).filter(Entity.user_id == user.id).delete()
+        db.query(Date).filter(Date.user_id == user.id).delete()
+        
+        # Finally delete the user
+        db.query(User).filter(User.id == user.id).delete()
+        db.commit()
+        
+        # Clear session and redirect to signup
+        response = RedirectResponse(url="/signup", status_code=302)
+        response.delete_cookie(key="session_token")
+        return response
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete account: {str(e)}"
+        )
+    finally:
+        db.close()
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request, username: str = Depends(verify_credentials)):
+async def home(request: Request, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        ibits = session.query(Ibit).order_by(Ibit.date_added.desc()).all()
-        categories = session.query(Category).order_by(Category.name).all()
+        # Filter all data by user_id
+        ibits = session.query(Ibit).filter(Ibit.user_id == user.id).order_by(Ibit.date_added.desc()).all()
+        categories = session.query(Category).filter(Category.user_id == user.id).order_by(Category.name).all()
         # Only show non-alias entities
-        entities = session.query(Entity).filter(Entity.linked_to_id == None).order_by(Entity.name).all()
-        dates = session.query(Date).order_by(Date.date.desc()).all()
+        entities = session.query(Entity).filter(Entity.user_id == user.id, Entity.linked_to_id == None).order_by(Entity.name).all()
+        dates = session.query(Date).filter(Date.user_id == user.id).order_by(Date.date.desc()).all()
         
         # Get unique sources
         sources_dict = {}
@@ -59,16 +226,17 @@ async def home(request: Request, username: str = Depends(verify_credentials)):
             "categories": categories,
             "entities": entities,
             "sources": sources_dict,
-            "dates": dates
+            "dates": dates,
+            "user": user
         })
     finally:
         session.close()
 
 @app.get("/ibits", response_class=HTMLResponse)
-async def list_ibits(request: Request, username: str = Depends(verify_credentials)):
+async def list_ibits(request: Request, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        ibits = session.query(Ibit).order_by(Ibit.date_added.desc()).all()
+        ibits = session.query(Ibit).filter(Ibit.user_id == user.id).order_by(Ibit.date_added.desc()).all()
         return templates.TemplateResponse("ibits.html", {
             "request": request,
             "ibits": ibits
@@ -77,10 +245,10 @@ async def list_ibits(request: Request, username: str = Depends(verify_credential
         session.close()
 
 @app.get("/ibits/{ibit_id}", response_class=HTMLResponse)
-async def view_ibit(request: Request, ibit_id: int, username: str = Depends(verify_credentials)):
+async def view_ibit(request: Request, ibit_id: int, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        ibit = session.query(Ibit).filter_by(id=ibit_id).first()
+        ibit = session.query(Ibit).filter(Ibit.user_id == user.id, Ibit.id == ibit_id).first()
         if not ibit:
             return templates.TemplateResponse("error.html", {
                 "request": request,
@@ -101,11 +269,11 @@ async def edit_ibit(
     categories: str = Form(""),
     entities: str = Form(""),
     dates: str = Form(""),
-    username: str = Depends(verify_credentials)
+    user: User = Depends(get_current_user)
 ):
     session = DBSession()
     try:
-        ibit = session.query(Ibit).filter_by(id=ibit_id).first()
+        ibit = session.query(Ibit).filter(Ibit.user_id == user.id, Ibit.id == ibit_id).first()
         if not ibit:
             return RedirectResponse(url="/", status_code=303)
         
@@ -123,9 +291,9 @@ async def edit_ibit(
             for cat_name in categories.split(","):
                 cat_name = cat_name.strip().lower()
                 if cat_name:
-                    category = session.query(Category).filter_by(name=cat_name).first()
+                    category = session.query(Category).filter(Category.name == cat_name, Category.user_id == user.id).first()
                     if not category:
-                        category = Category(name=cat_name)
+                        category = Category(name=cat_name, user_id=user.id)
                         session.add(category)
                     ibit.categories.append(category)
         
@@ -134,9 +302,9 @@ async def edit_ibit(
             for ent_name in entities.split(","):
                 ent_name = ent_name.strip()
                 if ent_name:
-                    entity = session.query(Entity).filter_by(name=ent_name).first()
+                    entity = session.query(Entity).filter(Entity.name == ent_name, Entity.user_id == user.id).first()
                     if not entity:
-                        entity = Entity(name=ent_name)
+                        entity = Entity(name=ent_name, user_id=user.id)
                         session.add(entity)
                     ibit.entities.append(entity)
         
@@ -165,12 +333,12 @@ async def edit_ibit(
 @app.post("/ibits/{ibit_id}/delete")
 async def delete_ibit(
     ibit_id: int,
-    username: str = Depends(verify_credentials)
+    user: User = Depends(get_current_user)
 ):
     """Delete an ibit"""
     session = DBSession()
     try:
-        ibit = session.query(Ibit).filter_by(id=ibit_id).first()
+        ibit = session.query(Ibit).filter(Ibit.user_id == user.id, Ibit.id == ibit_id).first()
         if not ibit:
             return templates.TemplateResponse("error.html", {
                 "request": {},
@@ -190,10 +358,10 @@ async def delete_ibit(
         session.close()
 
 @app.get("/categories", response_class=HTMLResponse)
-async def list_categories(request: Request, username: str = Depends(verify_credentials)):
+async def list_categories(request: Request, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        categories = session.query(Category).order_by(Category.name).all()
+        categories = session.query(Category).filter(Category.user_id == user.id).order_by(Category.name).all()
         return templates.TemplateResponse("categories.html", {
             "request": request,
             "categories": categories
@@ -202,10 +370,10 @@ async def list_categories(request: Request, username: str = Depends(verify_crede
         session.close()
 
 @app.get("/categories/{category_name}", response_class=HTMLResponse)
-async def view_category(request: Request, category_name: str, username: str = Depends(verify_credentials)):
+async def view_category(request: Request, category_name: str, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        category = session.query(Category).filter_by(name=category_name).first()
+        category = session.query(Category).filter(Category.user_id == user.id, Category.name == category_name).first()
         if not category:
             return templates.TemplateResponse("error.html", {
                 "request": request,
@@ -219,11 +387,11 @@ async def view_category(request: Request, category_name: str, username: str = De
         session.close()
 
 @app.get("/entities", response_class=HTMLResponse)
-async def list_entities(request: Request, username: str = Depends(verify_credentials)):
+async def list_entities(request: Request, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
         # Only show entities that aren't aliases of other entities
-        entities = session.query(Entity).filter(Entity.linked_to_id == None).order_by(Entity.name).all()
+        entities = session.query(Entity).filter(Entity.user_id == user.id, Entity.linked_to_id == None).order_by(Entity.name).all()
         return templates.TemplateResponse("entities.html", {
             "request": request,
             "entities": entities
@@ -232,10 +400,10 @@ async def list_entities(request: Request, username: str = Depends(verify_credent
         session.close()
 
 @app.get("/entities/{entity_name}", response_class=HTMLResponse)
-async def view_entity(request: Request, entity_name: str, username: str = Depends(verify_credentials)):
+async def view_entity(request: Request, entity_name: str, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        entity = session.query(Entity).filter_by(name=entity_name).first()
+        entity = session.query(Entity).filter(Entity.user_id == user.id, Entity.name == entity_name).first()
         if not entity:
             return templates.TemplateResponse("error.html", {
                 "request": request,
@@ -265,13 +433,13 @@ async def merge_entity(
     request: Request,
     entity_name: str,
     target_entity: str = Form(...),
-    username: str = Depends(verify_credentials)
+    user: User = Depends(get_current_user)
 ):
     """Merge this entity into the target entity (makes this an alias of target)"""
     session = DBSession()
     try:
-        source_entity = session.query(Entity).filter_by(name=entity_name).first()
-        target = session.query(Entity).filter_by(name=target_entity).first()
+        source_entity = session.query(Entity).filter(Entity.user_id == user.id, Entity.name == entity_name).first()
+        target = session.query(Entity).filter(Entity.name == target_entity, Entity.user_id == user.id).first()
         
         if not source_entity or not target:
             return templates.TemplateResponse("error.html", {
@@ -307,10 +475,10 @@ async def merge_entity(
         session.close()
 
 @app.get("/dates", response_class=HTMLResponse)
-async def list_dates(request: Request, username: str = Depends(verify_credentials)):
+async def list_dates(request: Request, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        dates = session.query(Date).order_by(Date.date.desc()).all()
+        dates = session.query(Date).filter(Date.user_id == user.id).order_by(Date.date.desc()).all()
         return templates.TemplateResponse("dates.html", {
             "request": request,
             "dates": dates
@@ -319,10 +487,10 @@ async def list_dates(request: Request, username: str = Depends(verify_credential
         session.close()
 
 @app.get("/dates/{date}", response_class=HTMLResponse)
-async def view_date(request: Request, date: str, username: str = Depends(verify_credentials)):
+async def view_date(request: Request, date: str, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        date_obj = session.query(Date).filter_by(date=date).first()
+        date_obj = session.query(Date).filter(Date.user_id == user.id, Date.date == date).first()
         if not date_obj:
             return templates.TemplateResponse("error.html", {
                 "request": request,
@@ -336,10 +504,10 @@ async def view_date(request: Request, date: str, username: str = Depends(verify_
         session.close()
 
 @app.get("/sources/{source:path}", response_class=HTMLResponse)
-async def view_source(request: Request, source: str, username: str = Depends(verify_credentials)):
+async def view_source(request: Request, source: str, user: User = Depends(get_current_user)):
     session = DBSession()
     try:
-        ibits = session.query(Ibit).filter_by(source=source).all()
+        ibits = session.query(Ibit).filter(Ibit.source == source, Ibit.user_id == user.id).all()
         if not ibits:
             return templates.TemplateResponse("error.html", {
                 "request": request,
@@ -354,15 +522,14 @@ async def view_source(request: Request, source: str, username: str = Depends(ver
         session.close()
 
 @app.get("/quiz", response_class=HTMLResponse)
-async def quiz_page(request: Request, username: str = Depends(verify_credentials)):
+async def quiz_page(request: Request, user: User = Depends(get_current_user)):
     return templates.TemplateResponse("quiz.html", {
         "request": request
     })
 
 @app.get("/api/quiz")
-async def get_quiz(username: str = Depends(verify_credentials)):
+async def get_quiz(user: User = Depends(get_current_user)):
     from llm_service import generate_quiz_question_with_ai
-    from database import QuizProgress
     import random
     
     session = DBSession()
@@ -370,18 +537,18 @@ async def get_quiz(username: str = Depends(verify_credentials)):
         if not openai_client:
             raise HTTPException(status_code=500, detail="OpenAI client not configured")
         
-        # Get all ibit IDs
-        all_ibit_ids = [ibit.id for ibit in session.query(Ibit).all()]
+        # Get all ibit IDs for this user
+        all_ibit_ids = [ibit.id for ibit in session.query(Ibit).filter(Ibit.user_id == user.id).all()]
         
         if not all_ibit_ids:
             raise HTTPException(status_code=500, detail="No ibits available for quiz")
         
         # Load user's quiz progress from database
-        progress = session.query(QuizProgress).filter_by(username=username).first()
+        progress = session.query(QuizProgress).filter(QuizProgress.user_id == user.id).first()
         
         if not progress:
             # Create new progress entry
-            progress = QuizProgress(username=username, used_ibit_ids="")
+            progress = QuizProgress(user_id=user.id, username=user.email, used_ibit_ids="")
             session.add(progress)
             session.commit()
         
@@ -407,7 +574,7 @@ async def get_quiz(username: str = Depends(verify_credentials)):
         session.commit()
         
         # Get the ibit and generate question
-        selected_ibit = session.query(Ibit).filter_by(id=selected_id).first()
+        selected_ibit = session.query(Ibit).filter(Ibit.user_id == user.id, Ibit.id == selected_id).first()
         quiz_data = generate_quiz_question_with_ai(selected_ibit.text, openai_client)
         
         if not quiz_data:
@@ -426,7 +593,7 @@ async def get_quiz(username: str = Depends(verify_credentials)):
         session.close()
 
 @app.post("/api/quiz/answer")
-async def check_quiz_answer(request: Request, username: str = Depends(verify_credentials)):
+async def check_quiz_answer(request: Request, user: User = Depends(get_current_user)):
     data = await request.json()
     selected_index = data.get("selected_index")
     correct_index = data.get("correct_index")
@@ -437,25 +604,25 @@ async def check_quiz_answer(request: Request, username: str = Depends(verify_cre
         return {"correct": False, "message": f"❌ Incorrect. The correct answer was option {chr(65 + correct_index)}."}
 
 @app.get("/graph", response_class=HTMLResponse)
-async def graph_page(request: Request, username: str = Depends(verify_credentials)):
+async def graph_page(request: Request, user: User = Depends(get_current_user)):
     return templates.TemplateResponse("graph.html", {
         "request": request
     })
 
 @app.get("/generate-graph")
-async def generate_graph(username: str = Depends(verify_credentials)):
+async def generate_graph(user: User = Depends(get_current_user)):
     session = DBSession()
     try:
         # Create network
         net = Network(height="800px", width="100%", bgcolor="#ffffff", font_color="#333333")
         net.barnes_hut(gravity=-8000, central_gravity=0.3, spring_length=150, spring_strength=0.001)
         
-        # Fetch all data
-        ibits = session.query(Ibit).all()
-        categories = session.query(Category).all()
+        # Fetch all data for this user
+        ibits = session.query(Ibit).filter(Ibit.user_id == user.id).all()
+        categories = session.query(Category).filter(Category.user_id == user.id).all()
         # Only include entities that aren't aliases
-        entities = session.query(Entity).filter(Entity.linked_to_id == None).all()
-        dates = session.query(Date).all()
+        entities = session.query(Entity).filter(Entity.linked_to_id == None, Entity.user_id == user.id).all()
+        dates = session.query(Date).filter(Date.user_id == user.id).all()
         
         # Calculate node sizes based on number of connections
         def calculate_size(base_size, connection_count):
@@ -581,7 +748,7 @@ async def generate_graph(username: str = Depends(verify_credentials)):
         session.close()
 
 @app.get("/static/{file_path:path}")
-async def serve_static(file_path: str, username: str = Depends(verify_credentials)):
+async def serve_static(file_path: str, user: User = Depends(get_current_user)):
     file_location = f"static/{file_path}"
     if os.path.exists(file_location) and os.path.isfile(file_location):
         return FileResponse(file_location)

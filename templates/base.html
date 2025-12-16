@@ -210,16 +210,43 @@
         .btn-secondary:hover {
             background: #7f8c8d;
         }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .user-email {
+            font-weight: 500;
+        }
+        .logout-link {
+            color: #e74c3c;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .logout-link:hover {
+            color: #c0392b;
+        }
     </style>
 </head>
 <body>
     <nav>
-        <h1>Knowledger</h1>
+        <div>
+            <h1>Knowledger</h1>
+        </div>
         <ul>
             <li><a href="/">Home</a></li>
             <li><a href="/quiz">Quiz</a></li>
             <li><a href="/graph">Graph</a></li>
+            <li><a href="/account">Account</a></li>
         </ul>
+        <div class="user-info">
+            {% if user %}
+            <span class="user-email">{{ user.email }}</span>
+            <a href="/logout" class="logout-link">Logout</a>
+            {% endif %}
+        </div>
     </nav>
     <div class="container">
         {% block content %}{% endblock %}

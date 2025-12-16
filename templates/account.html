@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - Knowledger{% endblock %}
+
+{% block content %}
+<style>
+    .account-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .account-section {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .account-section h2 {
+        margin-bottom: 1rem;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+    }
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #555;
+    }
+    .info-value {
+        color: #333;
+    }
+    .linked-status {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .linked-status.linked {
+        background: #d4edda;
+        color: #155724;
+    }
+    .linked-status.not-linked {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .linking-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+    .linking-code {
+        display: none;
+        text-align: center;
+        margin-top: 1rem;
+    }
+    .code-display {
+        font-size: 2rem;
+        font-weight: bold;
+        letter-spacing: 0.3rem;
+        color: #3498db;
+        background: white;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        border: 2px dashed #3498db;
+        margin: 1rem 0;
+    }
+    .instructions {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    .instructions ol {
+        margin: 0.5rem 0 0 1.5rem;
+        padding: 0;
+    }
+    .instructions li {
+        margin: 0.5rem 0;
+    }
+    .btn-generate {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 5px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .btn-generate:hover {
+        background: #2980b9;
+    }
+    .btn-generate:disabled {
+        background: #95a5a6;
+        cursor: not-allowed;
+    }
+    .danger-zone {
+        background: #fff5f5;
+        border: 2px solid #e74c3c;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+    .danger-zone h3 {
+        color: #e74c3c;
+        margin-bottom: 0.5rem;
+    }
+    .btn-delete {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 5px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-top: 1rem;
+    }
+    .btn-delete:hover {
+        background: #c0392b;
+    }
+</style>
+
+<div class="account-container">
+    <h1>Account Settings</h1>
+    
+    <div class="account-section">
+        <h2>Account Information</h2>
+        <div class="info-row">
+            <span class="info-label">Email:</span>
+            <span class="info-value">{{ user.email }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Account Created:</span>
+            <span class="info-value">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'Unknown' }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Telegram Status:</span>
+            {% if user.telegram_user_id %}
+                <span class="linked-status linked">✓ Linked</span>
+            {% else %}
+                <span class="linked-status not-linked">Not Linked</span>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if not user.telegram_user_id %}
+    <div class="account-section">
+        <h2>Link Telegram Bot</h2>
+        <p>Connect your Telegram account to use the Knowledger bot.</p>
+        
+        <div class="linking-section">
+            <button class="btn-generate" id="generateCodeBtn" onclick="generateCode()">
+                Generate Linking Code
+            </button>
+            
+            <div class="linking-code" id="linkingCodeSection">
+                <p><strong>Your Linking Code:</strong></p>
+                <div class="code-display" id="codeDisplay"></div>
+                
+                <div class="instructions">
+                    <p><strong>How to link your account:</strong></p>
+                    <ol>
+                        <li>Open Telegram and start a chat with your Knowledger Bot</li>
+                        <li>Send the command: <code>/link [YOUR_CODE]</code></li>
+                        <li>For example: <code>/link <span id="exampleCode">ABC123</span></code></li>
+                        <li>The bot will confirm when your account is linked</li>
+                    </ol>
+                    <p><em>Note: This code expires after being used or after 24 hours.</em></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="account-section">
+        <h2>Telegram Bot</h2>
+        <p>✓ Your Telegram account is linked. You can now use the bot to add and manage your knowledge items.</p>
+        <p><em>To unlink your account, please contact support.</em></p>
+    </div>
+    {% endif %}
+    
+    <div class="account-section">
+        <h2>Danger Zone</h2>
+        <div class="danger-zone">
+            <h3>⚠️ Delete Account</h3>
+            <p>Permanently delete your account and all associated data. This action cannot be undone.</p>
+            <p><strong>This will delete:</strong></p>
+            <ul>
+                <li>All your knowledge items (ibits)</li>
+                <li>All categories, entities, and dates</li>
+                <li>Your quiz progress</li>
+                <li>Your account information</li>
+            </ul>
+            <button class="btn-delete" onclick="confirmDelete()">Delete My Account</button>
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateCode() {
+    const btn = document.getElementById('generateCodeBtn');
+    const codeSection = document.getElementById('linkingCodeSection');
+    const codeDisplay = document.getElementById('codeDisplay');
+    const exampleCode = document.getElementById('exampleCode');
+    
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    
+    try {
+        const response = await fetch('/account/generate-code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to generate code');
+        }
+        
+        const data = await response.json();
+        codeDisplay.textContent = data.code;
+        exampleCode.textContent = data.code;
+        codeSection.style.display = 'block';
+        btn.textContent = 'Generate New Code';
+        btn.disabled = false;
+    } catch (error) {
+        alert('Error generating code: ' + error.message);
+        btn.textContent = 'Generate Linking Code';
+        btn.disabled = false;
+    }
+}
+
+function confirmDelete() {
+    const userEmail = '{{ user.email }}';
+    const confirmation = prompt(
+        'This will permanently delete your account and ALL your data.\n\n' +
+        'Type your email address (' + userEmail + ') to confirm:'
+    );
+    
+    if (confirmation === userEmail) {
+        const doubleCheck = confirm(
+            'Are you absolutely sure? This cannot be undone!\n\n' +
+            'Click OK to permanently delete your account.'
+        );
+        
+        if (doubleCheck) {
+            deleteAccount();
+        }
+    } else if (confirmation !== null) {
+        alert('Email does not match. Account deletion cancelled.');
+    }
+}
+
+async function deleteAccount() {
+    try {
+        const response = await fetch('/account/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else if (!response.ok) {
+            throw new Error('Failed to delete account');
+        }
+    } catch (error) {
+        alert('Error deleting account: ' + error.message);
+    }
+}
+</script>
+
+{% endblock %}
