@@ -79,3 +79,9 @@ backup_error.log
 
 # rclone config (contains secrets)
 rclone/
+
+# SSL certificates (contains private keys - DO NOT COMMIT!)
+certbot/
+
+# nginx backup files
+nginx/*.bak
