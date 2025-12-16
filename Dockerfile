@@ -16,6 +16,7 @@ RUN uv sync
 # Copy application code
 COPY src/ ./src/
 COPY templates/ ./templates/
+COPY scripts/ ./scripts/
 
 # Create directories for database, static files, and lib
 RUN mkdir -p /data /app/static /app/lib
