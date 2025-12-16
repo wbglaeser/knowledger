@@ -42,7 +42,7 @@ echo ""
 # Step 4: Get SSL certificate
 echo "Step 4: Obtaining SSL certificate from Let's Encrypt..."
 echo "This may take a minute..."
-docker compose run --rm certbot certonly \
+docker compose run --rm --entrypoint certbot certbot certonly \
   --webroot \
   --webroot-path=/var/www/certbot \
   -d $DOMAIN \
