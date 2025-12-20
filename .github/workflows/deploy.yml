@@ -25,8 +25,6 @@ jobs:
             git remote get-url origin | grep -q "git@github.com" && git remote set-url origin https://github.com/$(git remote get-url origin | sed 's/.*:\(.*\)\.git/\1/').git || true
             # Stop containers first to release file locks
             docker compose down
-            # Fix file ownership (change docker-created files to current user)
-            sudo chown -R $(whoami):$(whoami) .
             # Stash any local changes and clean untracked files
             git stash --include-untracked
             git clean -fd
