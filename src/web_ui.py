@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Cookie, Response
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from src.database import init_db, Ibit, Category, Entity, Date, User, QuizProgress
 from pyvis.network import Network
@@ -12,6 +13,7 @@ import os
 load_dotenv()
 
 app = FastAPI(title="Knowledger Database UI")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 DBSession = init_db()
@@ -142,7 +144,7 @@ async def signup(email: str = Form(...), password: str = Form(...), password_con
 @app.get("/logout")
 async def logout():
     """Logout user by clearing session cookie."""
-    response = RedirectResponse(url="/login", status_code=302)
+    response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie(key="session_token")
     return response
 
@@ -202,7 +204,11 @@ async def delete_account(user: User = Depends(get_current_user)):
         db.close()
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request, user: User = Depends(get_current_user)):
+async def home(request: Request, user: User = Depends(get_current_user_optional)):
+    # Show landing page if not logged in
+    if not user:
+        return templates.TemplateResponse("landing.html", {"request": request})
+    
     session = DBSession()
     try:
         # Filter all data by user_id
@@ -524,7 +530,8 @@ async def view_source(request: Request, source: str, user: User = Depends(get_cu
 @app.get("/quiz", response_class=HTMLResponse)
 async def quiz_page(request: Request, user: User = Depends(get_current_user)):
     return templates.TemplateResponse("quiz.html", {
-        "request": request
+        "request": request,
+        "user": user
     })
 
 @app.get("/api/quiz")
@@ -606,7 +613,8 @@ async def check_quiz_answer(request: Request, user: User = Depends(get_current_u
 @app.get("/graph", response_class=HTMLResponse)
 async def graph_page(request: Request, user: User = Depends(get_current_user)):
     return templates.TemplateResponse("graph.html", {
-        "request": request
+        "request": request,
+        "user": user
     })
 
 @app.get("/generate-graph")
@@ -747,12 +755,6 @@ async def generate_graph(user: User = Depends(get_current_user)):
     finally:
         session.close()
 
-@app.get("/static/{file_path:path}")
-async def serve_static(file_path: str, user: User = Depends(get_current_user)):
-    file_location = f"static/{file_path}"
-    if os.path.exists(file_location) and os.path.isfile(file_location):
-        return FileResponse(file_location)
-    return {"error": "File not found"}
 
 if __name__ == "__main__":
     import uvicorn
