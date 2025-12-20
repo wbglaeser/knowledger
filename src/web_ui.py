@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Cook
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from src.database import init_db, Ibit, Category, Entity, Date, User, QuizProgress
 from pyvis.network import Network
 from dotenv import load_dotenv
@@ -13,6 +15,18 @@ import os
 load_dotenv()
 
 app = FastAPI(title="Knowledger Database UI")
+
+# Trust proxy headers for HTTPS detection
+class ProxyHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Trust X-Forwarded-Proto header from nginx
+        if "x-forwarded-proto" in request.headers:
+            request.scope["scheme"] = request.headers["x-forwarded-proto"]
+        response = await call_next(request)
+        return response
+
+app.add_middleware(ProxyHeadersMiddleware)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
