@@ -23,13 +23,7 @@ jobs:
             cd ~/knowledger
             # Switch to HTTPS if using SSH
             git remote get-url origin | grep -q "git@github.com" && git remote set-url origin https://github.com/$(git remote get-url origin | sed 's/.*:\(.*\)\.git/\1/').git || true
-            # Stop containers first to release file locks
-            docker compose down
-            # Stash any local changes and clean untracked files
-            git stash --include-untracked
-            git clean -fd
-            # Pull latest changes
             git pull origin main
-            # Rebuild and restart containers
+            docker compose down
             docker compose up -d --build
             docker compose ps
