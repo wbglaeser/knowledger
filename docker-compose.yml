@@ -23,6 +23,7 @@ services:
     volumes:
       - ./data:/data
       - ./knowledger.db:/app/knowledger.db
+      - ./static:/app/static
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}

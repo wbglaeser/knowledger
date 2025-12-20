@@ -17,11 +17,9 @@ RUN uv sync
 COPY src/ ./src/
 COPY templates/ ./templates/
 COPY scripts/ ./scripts/
-COPY static/ ./static/
-COPY lib/ ./lib/
 
-# Create directories for database
-RUN mkdir -p /data
+# Create directories for database, static files, and lib
+RUN mkdir -p /data /app/static /app/lib
 
 # Set Python path
 ENV PYTHONPATH=/app
